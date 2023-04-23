@@ -2,9 +2,10 @@ Play with Makie
 
 some simple demos in GLMakie@Julia
 ```
-include("deps.jl")
-# for shorter waiting times compile a sysimage...
-include("init.jl") # oc. Revise is not a must
+ 
+include("deps.jl") # hopefully everything is included
+# for shorter uptimes compile a sysimage...
+include("init.jl") # extends the LOAD_PATH (Revise is not a must)
 using PwM
 bracket("bs") # bracket() will print out the available methods
 numint("trap") # numint() for help
