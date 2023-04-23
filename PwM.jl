@@ -7,6 +7,6 @@ module PwM
   export numint
 
   using Zero
-  export bracket
+  export bracket, proba
 
 end

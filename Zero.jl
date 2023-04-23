@@ -455,4 +455,65 @@ module Zero
   export bracket
 
 
+
+  function proba()
+    begin
+      fig=Figure(
+        fonts = (; regular= "TeX Mono")
+      )
+      
+      fax=fig[1:5,:1:5]
+      f1=fig[6,1] ; f2=fig[6,5];
+
+      ax_title=Observable("init")
+      ax=Axis(
+        fax,
+        xgridvisible=false,
+        ygridvisible=false,
+        title=ax_title,
+      )
+      hidedecorations!(ax)
+      hidespines!(ax)
+      set_theme!(backgroundcolor = :gray90)
+    end
+    
+    # plotting
+    begin
+      p1=scatter!(ax,1:10,10:-1:1,visible=false)
+      ip1=false
+
+      p2=scatter!(ax,1:10,1:10,visible=false,color=:red)
+      ip2=false
+    end
+
+
+    # buttons
+    begin 
+      btn1=Button(
+        f1, 
+        label="1",
+        font="TeX Mono",
+        fontsize=16,
+        tellwidth=true,
+      )
+      on(btn1.clicks) do _
+        ip1=p1.visible=!ip1
+      end
+
+      btn2=Button(
+        f2, 
+        label="2",
+        font="TeX Mono",
+        fontsize=16,
+        tellwidth=true,
+      )
+      on(btn2.clicks) do _
+        ip2=p2.visible=!ip2
+      end
+    end
+    
+    fig
+  end
+  export proba
+
 end # of Zero
