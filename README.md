@@ -9,5 +9,8 @@ using PwM
 bracket("bs") # bracket() will print out the available methods
 numint("trap") # numint() for help
 ```
-motto: you can use makie without any clue about it.
+* motto: you can use makie without any clue about it.
+* my main problem is to separate the computation and visualization - i'll make some effort this direction
+
+
 
