@@ -5,8 +5,128 @@ module Zero
 
   using GLMakie, Tools
 
-  # collection of test functions
-  # TODO extend it
+#############################################################
+# bisect - preliminary ver. ("deprecated")
+#############################################################
+
+  function bisect0()
+
+    function pltupd(ax,ax_title,a,b,f,plt)
+      for p in plt["upd"]
+        delete!(ax,p)
+      end
+      empty!(plt["upd"])
+
+      fa,fb=f(a),f(b)
+      pts=[
+        (Point2f(a,0),Point2f(b,0)),
+        (Point2f(a,0),Point2f(a,fa)),    
+        (Point2f(b,0),Point2f(b,fb)),    
+      ]
+      p=linesegments!(
+        ax, 
+        pts,
+        linewidth=2,
+        color=(:red,0.4)
+      )
+      ax_title[]="a=$(a), b=$(b), f((a+b)/2)=$(f(0.5*(a+b)))"
+      push!(plt["upd"],p)
+    end
+
+
+    function pltini(_ax,_ax_title,_a,_b,_f,_plt)
+      for p in _plt["ini"]
+        delete!(_ax,p)
+      end
+      empty!(_plt["ini"])
+
+      xx=range(_a,_b,200)
+      yy=_f.(xx)
+      p1=lines!(
+        _ax,
+        xx, yy,
+        color=:blue,
+        
+      )
+      p2=hlines!(
+        _ax,
+        [0],
+        color=(:black,0.5),
+        linewidth=1,
+      )
+      push!(_plt["ini"],p1,p2)
+      pltupd(_ax,_ax_title,_a,_b,_f,_plt)
+    end
+
+
+    fig=Figure(
+      fonts = (; regular= "TeX Mono")
+    )
+    ax_title=Observable("init")
+    ax=Axis(
+      fig[1,1],
+      xgridvisible=false,
+      ygridvisible=false,
+      title=ax_title,
+    )
+    #hidedecorations!(ax)
+    hidespines!(ax)
+    set_theme!(backgroundcolor = :gray90)
+
+
+    a=-1; b=1
+    f(x)=x^3-0.3x+0.1     
+
+    plt=Dict("ini"=>[],"upd"=>[])
+    pltini(ax,ax_title,a,b,f,plt)
+
+    btnstep=Button(
+      fig[2,2], 
+      label="step",
+      font="TeX Mono",
+      fontsize=16,
+      tellwidth=true,
+    )
+
+
+    on(btnstep.clicks) do _
+      mid=0.5*(a+b)
+      if f(a)*f(mid)<=0.0
+        b=mid
+      else
+        a=mid
+      end
+      println(f(a)," ",f(b))
+      pltupd(ax,ax_title,a,b,f,plt)
+    end
+
+    btnzoom=Button(
+      fig[3,2], 
+      label="zoom",
+      font="TeX Mono",
+      fontsize=16,
+      tellwidth=true,
+    )
+
+
+    on(btnzoom.clicks) do _
+      pltini(ax,ax_title,a,b,f,plt)
+    end
+
+
+    fig
+  end # of bisect()
+
+  export bisect0
+
+
+#############################################################
+# bisectfb = bisect restructured
+#############################################################
+##
+#  the plots are really deleted during the delete!(ax,...) so they cannot be reused
+##
+
   function mkdata_bracket(fun)
     if fun=="sin(x)"
       a=-pi/2
@@ -56,8 +176,7 @@ module Zero
     (a=a,b=b,f=f,desc=desc,exact=exact,limits=limits)
   end # of mkdata_bracket
 
-  # TODO get ride of separate decoration functions
-  # ? always generate each plot and set visibilty by a button action
+  
   function comp_bisect(a,b,f)
     m=0.5*(a+b)
     if f(a)*f(m)<=0.0
@@ -195,7 +314,7 @@ module Zero
   
   
   function bracket(methodname="")
-    # method "menu" (TODO make a graphical method menu)
+    # method "menu" (of course there will be one)
     begin
       method,dec,mname=if methodname in ["bisect","bs"]
         comp_bisect,dec_bisect,"bisection"
@@ -317,7 +436,7 @@ module Zero
       (a+b)/2=$(0.5*(a+b)), f((a+b)/2)=$(mround(f(0.5*(a+b)))), """
     end
 
-    # basic definitions
+    # base
     begin
       fig=Figure(
         fonts = (; regular= "TeX Mono")
