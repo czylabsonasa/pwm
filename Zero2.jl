@@ -1,6 +1,4 @@
-# it needs a full rewrite
-# method spec plotting+decorations (what is happening...)
-# ?
+# test: forward/backward steps
 
 module Zero
   #GLMakie.activate!()
@@ -189,6 +187,7 @@ module Zero
   end
 
   function dec_rf2(store)
+
   end
 
  

@@ -2,7 +2,7 @@ import Pkg
 deps=[
   "Revise",
   "GLMakie",
-  "Printf", "LaTexStrings",
+  "Printf", "LaTeXStrings",
   # "LinearAlgebra",
 ]
 
