@@ -1,6 +1,4 @@
-# it needs a full rewrite
-# method spec plotting+decorations (what is happening...)
-# zoom is dropped out...
+# got a more involved "method", but the overall complexity is smaller (i think)
 
 module Zero
   #GLMakie.activate!()
@@ -52,8 +50,7 @@ module Zero
     (A=A,B=B,f=f,desc=desc,exact=exact)
   end # of mkdata_bracket
 
-  # TODO get ride of separate decoration functions
-  # ? always generate each plot and set visibilty by a button action
+
   function bisect(store)
     pos,npos=store["pos"],store["npos"]
     (pos<=npos) && return
@@ -69,26 +66,15 @@ module Zero
     end
     
     ax=store["ax"]
-    A,B=store["A"],store["B"]
     f=store["f"]
     a,b=store["next_ab"][pos-1]
     na,nb=store["next_ab"][pos]=comp_bisect(f,a,b)
     
     
-    xx=range(A,B,200)
-    plt=lines!(
-      ax,
-      xx, f.(xx),
-      color=:blue,
-      visible=false,
-    )
-
-
-
     xx=range(a,b,200)
     yy=f.(xx)
     c,d=extrema(yy)
-    zplt=lines!(
+    plt=lines!(
       ax,
       xx, yy,
       color=:blue,
@@ -97,7 +83,7 @@ module Zero
     m1=0.5*(a+b)
     m2=0.5*(c+d)
     h=1.1
-    store["zlimits"][pos]=((h*(a-m1)+m1,h*(b-m1)+m1),(h*(c-m2)+m2,h*(d-m2)+m2))
+    store["limits"][pos]=((h*(a-m1)+m1,h*(b-m1)+m1),(h*(c-m2)+m2,h*(d-m2)+m2))
 
   
     pts=[
@@ -122,87 +108,87 @@ module Zero
       ax, 
       pts,
       linewidth=2,
-      color=(:green,0.4),
+      color=(:green,0.7),
       visible=false,
     )
 
-    store["plt"][pos]=(plain=plt,zoom=zplt,common=red,extra=green)
+    store["plt"][pos]=(plt=plt,common=red,extra=green)
 
     store["ax_title"]="""a=$(mround(a)), b=$(mround(b)), |b-a|=$(mround(b-a))
     (a+b)/2=$(0.5*(a+b)), f((a+b)/2)=$(mround(f(0.5*(a+b)))), """
   end
-  
-  function dec_bisect(store)
-    pos=store["pos"]
-    npos=store["npos"]
-    ax=store["ax"]
-    f=store["f"]
-    a,b,_=store["abseq"][pos]
-    fa,fb=f(a),f(b)
 
-    # mod of regula-falsi
-    c=0.5*(a+b)
-    fc=f(c)
-    cc,fcc=if fa*fc<=0
-      a,fa
-    else
-      b,fb
+  function regulafalsi(store)
+    pos,npos=store["pos"],store["npos"]
+    (pos<=npos) && return
+
+    function comp_regulafalsi(f,a,b)
+      fa,fb=f(a),f(b)
+      c=a-fa/(fa-fb)*(a-b)
+      if fa*f(c)<=0.0
+        b=c
+      else
+        a=c
+      end
+      a,b
     end
     
-    p=linesegments!(
-      ax, 
-      [
-        (Point2f(c,0),Point2f(cc,0)),
-        (Point2f(c,0),Point2f(c,fc)),        
-        (Point2f(cc,0),Point2f(cc,fcc)),        
-      ],
-      linewidth=2,
-      color=(:green,0.9)
-    )
-    push!(store["aktplt"],p)
-  end
-
-  
-  function comp_regulafalsi(a,b,f)
-    fa,fb=f(a),f(b)
-    c=a-fa/(fa-fb)*(a-b)
-    if fa*f(c)<=0.0
-      b=c
-    else
-      a=c
-    end
-    a,b
-  end
-
-  function dec_regulafalsi(store)
-    pos=store["pos"]
-    npos=store["npos"]
     ax=store["ax"]
     f=store["f"]
-    a,b,_=store["abseq"][pos]
-    fa,fb=f(a),f(b)
-
-    c=a-fa*(a-b)/(fa-fb)
-    fc=f(c)
-    cc,fcc=if fa*fc<=0
-      a,fa
-    else
-      b,fb
-    end
+    a,b=store["next_ab"][pos-1]
+    na,nb=store["next_ab"][pos]=comp_regulafalsi(f,a,b)
     
-    p=linesegments!(
-      ax, 
-      [
-        (Point2f(c,0),Point2f(cc,0)),
-        (Point2f(a,fa),Point2f(b,fb)),
-        (Point2f(c,0),Point2f(c,fc)),        
-        (Point2f(cc,0),Point2f(cc,fcc)),        
-      ],
-      linewidth=2,
-      color=(:green,0.9)
+    
+    xx=range(a,b,200)
+    yy=f.(xx)
+    plt=lines!(
+      ax,
+      xx, yy,
+      color=:blue,
+      visible=false,
     )
-    push!(store["aktplt"],p)
+    c,d=extrema(yy)
+    m1=0.5*(a+b)
+    m2=0.5*(c+d)
+    h=1.1
+    store["limits"][pos]=((h*(a-m1)+m1,h*(b-m1)+m1),(h*(c-m2)+m2,h*(d-m2)+m2))
+
+  
+    fa,fb=f(a),f(b)
+    pts=[
+      (Point2f(a,0),Point2f(b,0)),
+      (Point2f(a,0),Point2f(a,fa)),    
+      (Point2f(b,0),Point2f(b,fb)),    
+    ]
+    red=linesegments!(
+      ax, 
+      pts,
+      linewidth=2,
+      color=(:red,0.4),
+      visible=false,
+    )
+
+    fna,fnb=f(na),f(nb)
+    pts=[
+      (Point2f(na,0),Point2f(nb,0)),
+      (Point2f(na,0),Point2f(na,fna)),    
+      (Point2f(nb,0),Point2f(nb,fnb)),    
+      (Point2f(a,fa),Point2f(b,fb)),    
+    ]
+    green=linesegments!(
+      ax, 
+      pts,
+      linewidth=2,
+      color=(:green,0.7),
+      visible=false,
+    )
+
+    store["plt"][pos]=(plt=plt,common=red,extra=green)
+
+    store["ax_title"]="""a=$(mround(a)), b=$(mround(b)), |b-a|=$(mround(b-a))
+    (a+b)/2=$(0.5*(a+b)), f((a+b)/2)=$(mround(f(0.5*(a+b)))), """
   end
+
   
   function comp_bsrf(a,b,f)
     fa,fb=f(a),f(b)
@@ -283,21 +269,14 @@ module Zero
     function plt(store)
       pos=store["pos"]
       aktplt=store["plt"][pos]
-      z=store["zoom"]
-      aktplt.plain.visible=z
-      aktplt.zoom.visible=!z
       aktplt.common.visible=true;
       aktplt.extra.visible=store["extra"]
-      store["ax"].limits=store["zlimits"][pos]
+      aktplt.plt.visible=true
+      store["ax"].limits=store["limits"][pos]
 
       store["ax"].title=store["ax_title"]
     end
     
-    function zoom(store)
-      store["zoom"]=!store["zoom"]
-      plt(store)
-    end
-
     function extra(store)
       store["extra"]=!store["extra"]
       plt(store)
@@ -325,9 +304,9 @@ module Zero
       )
       
       flab1=fig[-1,1:6]
-      flab2=fig[0,1:4]; fmenu=fig[0,5:6]
-      fax=fig[1:5,:1:5]
-      fleft=fig[6,1] ; fzoom=fig[6,2]; fright=fig[6,3]; fdec=fig[6,6];
+      flab2=fig[0,1:4]; fmenu=fig[0,6]
+      fax=fig[1:5,1:6]
+      fleft=fig[6,2] ; fextra=fig[6,3]; fright=fig[6,4]
       
       flab2_text=Observable("init")
       ax_title=Observable("init")
@@ -349,10 +328,7 @@ module Zero
         "npos"=>0,
         "pos"=>0,
         "extra"=>false,
-        "zoom"=>false,
-        "A"=>NaN,
-        "B"=>NaN,
-        "zlimits"=>Dict{Int,Any}(
+        "limits"=>Dict{Int,Any}(
           0=>(nothing,nothing),
         )
       )
@@ -384,22 +360,9 @@ module Zero
         left(store)
       end
 
-      btnzoom=Button(
-        fzoom, 
-        label="zoom",
-        font="TeX Mono",
-        fontsize=16,
-        tellwidth=true,
-      )
-
-      on(btnzoom.clicks) do _
-        return
-        zoom(store)
-      end
-
       # some decoration
       btnextra=Button(
-        fdec, 
+        fextra, 
         label="extra",
         font="TeX Mono",
         fontsize=16,
@@ -445,8 +408,6 @@ module Zero
         store["plt"]=Dict{Int,Any}(
           0=>(),
         )
-        store["A"]=data.A
-        store["B"]=data.B
         
         right(store)
       end
