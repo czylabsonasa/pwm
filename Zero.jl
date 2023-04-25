@@ -1,4 +1,6 @@
-# got a more involved "method", but the overall complexity is smaller (i think)
+# got a more involved "method", but the overall complexity is smaller (especially 
+# when every block is folded
+# 
 
 module Zero
   #GLMakie.activate!()
@@ -189,58 +191,143 @@ module Zero
     (a+b)/2=$(0.5*(a+b)), f((a+b)/2)=$(mround(f(0.5*(a+b)))), """
   end
 
+
+  function bsrf(store)
+    pos,npos=store["pos"],store["npos"]
+    (pos<=npos) && return
+
+    function comp_bsrf(f,a,b)
+      fa,fb=f(a),f(b)
+      c=a-fa/(fa-fb)*(a-b)
+      fc=f(c)
+      m=0.5*(a+b)
+      fm=f(m)
+      level=2
+      if fm*fc<=0
+        level=0
+        na,nb=min(m,c),max(m,c)
+      else
+        d=c-fc/(fc-fm)*(c-m)
+        fd=f(d)
+        if a<=d<=b && fd*fc<=0
+          if abs(d-c)<=abs(d-m)
+            na,nb=min(d,c),max(d,c)
+          else
+            na,nb=min(d,m),max(d,m)
+          end
+          level=1
+        else
+          if fa*fc<=0
+            na,nc=a,min(c,m)
+          else
+            na,nb=max(c,m),b
+          end
+        end
+      end
+      na,nb
+    end
+    
+    ax=store["ax"]
+    f=store["f"]
+    a,b=store["next_ab"][pos-1]
+    na,nb=store["next_ab"][pos]=comp_bsrf(f,a,b)
+    
+    
+    xx=range(a,b,200)
+    yy=f.(xx)
+    plt=lines!(
+      ax,
+      xx, yy,
+      color=:blue,
+      visible=false,
+    )
+    c,d=extrema(yy)
+    m1=0.5*(a+b)
+    m2=0.5*(c+d)
+    h=1.1
+    store["limits"][pos]=((h*(a-m1)+m1,h*(b-m1)+m1),(h*(c-m2)+m2,h*(d-m2)+m2))
+
   
-  function comp_bsrf(a,b,f)
     fa,fb=f(a),f(b)
-    m=0.5*(a+b); fm=f(m)
-    c=a-fa/(fa-fb)*(a-b); fc=f(c)
-    
-    m1,m2,fm1,fm2=if m>c
-      c,m,fc,fm
-    else
-      m,c,fm,fc
-    end
-    
-    if fm1*fm2<=0
-      m1,m2
-    else
-      if fa*fm1<=0
-        a,m1
-      else
-        m2,b
-      end
-    end
+    pts=[
+      (Point2f(a,0),Point2f(b,0)),
+      (Point2f(a,0),Point2f(a,fa)),    
+      (Point2f(b,0),Point2f(b,fb)),    
+    ]
+    red=linesegments!(
+      ax, 
+      pts,
+      linewidth=2,
+      color=(:red,0.4),
+      visible=false,
+    )
+
+    fna,fnb=f(na),f(nb)
+    pts=[
+      (Point2f(na,0),Point2f(nb,0)),
+      (Point2f(na,0),Point2f(na,fna)),    
+      (Point2f(nb,0),Point2f(nb,fnb)),    
+      (Point2f(a,fa),Point2f(b,fb)),    
+    ]
+    green=linesegments!(
+      ax, 
+      pts,
+      linewidth=2,
+      color=(:green,0.7),
+      visible=false,
+    )
+
+    store["plt"][pos]=(plt=plt,common=red,extra=green)
+
+    store["ax_title"]="""a=$(mround(a)), b=$(mround(b)), |b-a|=$(mround(b-a))
+    (a+b)/2=$(0.5*(a+b)), f((a+b)/2)=$(mround(f(0.5*(a+b)))), """
   end
 
-  function dec_bsrf(store)
-  end
-
-  function comp_rf2(a,b,f)
-    fa,fb=f(a),f(b)
-    m1=a-fa/(fa-fb)*(a-b); f1=f(m1)
-    
-    if fa*f1>0
-      m2=a-fa/(fa-f1)*(a-m1); f2=f(m2)
-      if m1<m2<b && f1*f2<=0
-        m1,m2
-      else
-        m1,b
-      end
-    else
-      m2=b-fb/(fb-f1)*(b-m1); f2=f(m2)
-      if a<m2<m1 && f1*f2<=0
-        m2,m1
-      else
-        a,m1
-      end
-    end
-  end
-
-  function dec_rf2(store)
-  end
-
- 
   
+#  function comp_bsrf(a,b,f)
+#    fa,fb=f(a),f(b)
+#    m=0.5*(a+b); fm=f(m)
+#    c=a-fa/(fa-fb)*(a-b); fc=f(c)
+    
+#    m1,m2,fm1,fm2=if m>c
+#      c,m,fc,fm
+#    else
+#      m,c,fm,fc
+#    end
+    
+#    if fm1*fm2<=0
+#      m1,m2
+#    else
+#      if fa*fm1<=0
+#        a,m1
+#      else
+#        m2,b
+#      end
+#    end
+#  end
+
+#  function comp_rf2(a,b,f)
+#    fa,fb=f(a),f(b)
+#    m1=a-fa/(fa-fb)*(a-b); f1=f(m1)
+    
+#    if fa*f1>0
+#      m2=a-fa/(fa-f1)*(a-m1); f2=f(m2)
+#      if m1<m2<b && f1*f2<=0
+#        m1,m2
+#      else
+#        m1,b
+#      end
+#    else
+#      m2=b-fb/(fb-f1)*(b-m1); f2=f(m2)
+#      if a<m2<m1 && f1*f2<=0
+#        m2,m1
+#      else
+#        a,m1
+#      end
+#    end
+#  end
+
+
   
   function bracket(methodname="")
     # method "menu" (TODO make a graphical method menu)
@@ -436,65 +523,5 @@ module Zero
   export bracket
 
 
-
-  function proba()
-    begin
-      fig=Figure(
-        fonts = (; regular= "TeX Mono")
-      )
-      
-      fax=fig[1:5,:1:5]
-      f1=fig[6,1] ; f2=fig[6,5];
-
-      ax_title=Observable("init")
-      ax=Axis(
-        fax,
-        xgridvisible=false,
-        ygridvisible=false,
-        title=ax_title,
-      )
-      hidedecorations!(ax)
-      hidespines!(ax)
-      set_theme!(backgroundcolor = :gray90)
-    end
-    
-    # plotting
-    begin
-      p1=scatter!(ax,1:10,10:-1:1,visible=false)
-      ip1=false
-
-      p2=scatter!(ax,1:10,1:10,visible=false,color=:red)
-      ip2=false
-    end
-
-
-    # buttons
-    begin 
-      btn1=Button(
-        f1, 
-        label="1",
-        font="TeX Mono",
-        fontsize=16,
-        tellwidth=true,
-      )
-      on(btn1.clicks) do _
-        ip1=p1.visible=!ip1
-      end
-
-      btn2=Button(
-        f2, 
-        label="2",
-        font="TeX Mono",
-        fontsize=16,
-        tellwidth=true,
-      )
-      on(btn2.clicks) do _
-        ip2=p2.visible=!ip2
-      end
-    end
-    
-    fig
-  end
-  export proba
 
 end # of Zero
