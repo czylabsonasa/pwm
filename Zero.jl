@@ -218,7 +218,7 @@ module Zero
           level=1
         else
           if fa*fc<=0
-            na,nc=a,min(c,m)
+            na,nb=a,min(c,m)
           else
             na,nb=max(c,m),b
           end
