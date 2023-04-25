@@ -1,6 +1,6 @@
 # it needs a full rewrite
 # method spec plotting+decorations (what is happening...)
-# ?
+# zoom is dropped out...
 
 module Zero
   #GLMakie.activate!()
@@ -11,63 +11,125 @@ module Zero
   # TODO extend it
   function mkdata_bracket(fun)
     if fun=="sin(x)"
-      a=-pi/2
-      b=2pi/3
+      A=-pi/2 
+      B=2pi/3
       f=x->sin(x)
       exact=0.0
       desc="f($(exact))=0"
-      limits=(a,b,-1.1,1.1)
     elseif fun=="x^3-0.3x+0.1"
-      a=-1.0
-      b=1.0
+      A=-1.0
+      B=1.0
       f=x->x^3-0.3*x+0.1
       exact=-0.670226327532111
       desc="f($(exact))=0"
-      limits=(a,b,-1.1,1.1)
     elseif fun=="x^3-x-2"
-      a=1.0
-      b=2.0
+      A=1.0
+      B=2.0
       f=x->x^3-x-2.0
       exact=1.521379706804568
       desc="f($(exact))=0"
-      limits=(a,b,-2.1,4.1)
     elseif fun=="x^2-2"
-      a=1.0
-      b=2.0
+      A=1.0
+      B=2.0
       f=x->x^2-2
       exact=1.4142135623730951
       desc="f($(exact))=0"
-      limits=(a,b,-1.1,2.1)
     elseif fun=="x^3-6"
-      a=1.0
-      b=2.0
+      A=1.0
+      B=2.0
       f=x->x^3-6
       exact=1.817120592832139
       desc="f($(exact))=0"
-      limits=(a,b,-5.1,2.1)
     elseif fun=="cos(x)-0.999"
-      a=-0.01
-      b=0.8
+      A=-0.01
+      B=0.8
       f=x->cos(x)-0.999
       exact=0.04472508716873383
       desc="f($(exact))=0"
-      limits=(a,b,-1.1,0.5)
     else
       nothing
     end
-    (a=a,b=b,f=f,desc=desc,exact=exact,limits=limits)
+    (A=A,B=B,f=f,desc=desc,exact=exact)
   end # of mkdata_bracket
 
   # TODO get ride of separate decoration functions
   # ? always generate each plot and set visibilty by a button action
-  function comp_bisect(a,b,f)
-    m=0.5*(a+b)
-    if f(a)*f(m)<=0.0
-      b=m
-    else
-      a=m
+  function bisect(store)
+    pos,npos=store["pos"],store["npos"]
+    (pos<=npos) && return
+
+    function comp_bisect(f,a,b)
+      m=0.5*(a+b)
+      if f(a)*f(m)<=0.0
+        b=m
+      else
+        a=m
+      end
+      a,b
     end
-    a,b
+    
+    ax=store["ax"]
+    A,B=store["A"],store["B"]
+    f=store["f"]
+    a,b=store["next_ab"][pos-1]
+    na,nb=store["next_ab"][pos]=comp_bisect(f,a,b)
+    
+    
+    xx=range(A,B,200)
+    plt=lines!(
+      ax,
+      xx, f.(xx),
+      color=:blue,
+      visible=false,
+    )
+
+
+
+    xx=range(a,b,200)
+    yy=f.(xx)
+    c,d=extrema(yy)
+    zplt=lines!(
+      ax,
+      xx, yy,
+      color=:blue,
+      visible=false,
+    )
+    m1=0.5*(a+b)
+    m2=0.5*(c+d)
+    h=1.1
+    store["zlimits"][pos]=((h*(a-m1)+m1,h*(b-m1)+m1),(h*(c-m2)+m2,h*(d-m2)+m2))
+
+  
+    pts=[
+      (Point2f(a,0),Point2f(b,0)),
+      (Point2f(a,0),Point2f(a,f(a))),    
+      (Point2f(b,0),Point2f(b,f(b))),    
+    ]
+    red=linesegments!(
+      ax, 
+      pts,
+      linewidth=2,
+      color=(:red,0.4),
+      visible=false,
+    )
+
+    pts=[
+      (Point2f(na,0),Point2f(nb,0)),
+      (Point2f(na,0),Point2f(na,f(na))),    
+      (Point2f(nb,0),Point2f(nb,f(nb))),    
+    ]
+    green=linesegments!(
+      ax, 
+      pts,
+      linewidth=2,
+      color=(:green,0.4),
+      visible=false,
+    )
+
+    store["plt"][pos]=(plain=plt,zoom=zplt,common=red,extra=green)
+
+    store["ax_title"]="""a=$(mround(a)), b=$(mround(b)), |b-a|=$(mround(b-a))
+    (a+b)/2=$(0.5*(a+b)), f((a+b)/2)=$(mround(f(0.5*(a+b)))), """
   end
   
   function dec_bisect(store)
@@ -197,124 +259,63 @@ module Zero
   function bracket(methodname="")
     # method "menu" (TODO make a graphical method menu)
     begin
-      method,dec,mname=if methodname in ["bisect","bs"]
-        comp_bisect,dec_bisect,"bisection"
-      elseif methodname in ["regulafalsi", "rf"]
-        comp_regulafalsi,dec_regulafalsi,"regula-falsi"
-      elseif methodname in ["bsrf"]
-        comp_bsrf, dec_bsrf, "bisection+regula-falsi"
-      elseif methodname in ["rf2"]
-        comp_rf2, dec_rf2, "regula-falsi variation"
+      method,mname=if methodname in ["bisect","bs"]
+        bisect,"bisection"
+      elseif methodname in ["regulafalsi", "rf", "fp"]
+        regulafalsi,"false position"
+      elseif methodname in ["bsrf", "bsfp"]
+        bsrf, "bisection+false pos."
+      elseif methodname in ["rf2","fp2"]
+        rf2, "regula-falsi variation"
       else
-        println("""call:\nbracket(methodname)\nwhere methodname in {"bs", "rf", "bsrf", "rf2"}""")
+        println("""call:\nbracket(methodname)\nwhere methodname in "bs", "rf"/"fp", "bsrf"/"bsfp", "rf2"/"fp2"}""")
         return
       end
       mname=mname*"@bracket"
     end
     
-    function mkplt(ax,a,b,f, xx=[],yy=[])
-      if xx==[]
-        xx=range(a,b,200)
-        yy=f.(xx)
+    function hide(store)
+      for p in store["plt"][store["pos"]]
+        p.visible=false
       end
-      p1=lines!(
-        ax,
-        xx, yy,
-        color=:blue,
-      )
-      p2=hlines!(
-        ax,
-        [0],
-        color=(:black,0.5),
-        linewidth=1,
-      )
-      pts=[
-        (Point2f(a,0),Point2f(b,0)),
-        (Point2f(a,0),Point2f(a,f(a))),    
-        (Point2f(b,0),Point2f(b,f(b))),    
-      ]
-      p3=linesegments!(
-        ax, 
-        pts,
-        linewidth=2,
-        color=(:red,0.4)
-      )
-      ([p1,p2,p3],[xx,yy])
+    end
+    
+    function plt(store)
+      pos=store["pos"]
+      aktplt=store["plt"][pos]
+      z=store["zoom"]
+      aktplt.plain.visible=z
+      aktplt.zoom.visible=!z
+      aktplt.common.visible=true;
+      aktplt.extra.visible=store["extra"]
+      store["ax"].limits=store["zlimits"][pos]
+
+      store["ax"].title=store["ax_title"]
     end
     
     function zoom(store)
-      pos=store["pos"]
-      npos=store["npos"]
-      (0<pos<npos) && return
-      a,b,z=store["abseq"][pos]
-      f=store["f"]
-      (z==true) && return
+      store["zoom"]=!store["zoom"]
+      plt(store)
+    end
 
-      ax=store["ax"]
-      for p in store["aktplt"]
-        delete!(ax,p)
-      end
+    function extra(store)
+      store["extra"]=!store["extra"]
+      plt(store)
+    end
 
-      pos=store["pos"]=pos+1
-      npos=store["npos"]=npos+1
-      store["abseq"][pos]=(a,b,true)
-      store["aktplt"],store["xyseq"][pos]=mkplt(ax,a,b,f)
-      store["ax_title"][]="""a=$(mround(a)), b=$(mround(b)), |b-a|=$(mround(b-a))
-      (a+b)/2=$(0.5*(a+b)), f((a+b)/2)=$(mround(f(0.5*(a+b)))), """
-     end
 
     function right(store)
-      pos=store["pos"]
-      npos=store["npos"]
-      ax=store["ax"]
-
-      #println(pos," ",npos)
-  
-      for p in store["aktplt"]
-        delete!(ax,p)
-      end
-
-      a,b,z=store["abseq"][pos]
-      f=store["f"]
-      
-      pos+=1
-      if pos<=npos
-        a,b,z=store["abseq"][pos]
-        store["aktplt"],_=mkplt(ax,a,b,f,store["xyseq"][pos]...)
-      else
-        a,b=method(a,b,f)
-        store["abseq"][pos]=(a,b,false)
-        store["aktplt"],store["xyseq"][pos]=mkplt(ax,a,b,f,store["xyseq"][pos-1]...)
-        npos+=1
-      end
-
-      store["pos"]=pos
-      store["npos"]=npos
-      store["ax_title"][]="""a=$(mround(a)), b=$(mround(b)), |b-a|=$(mround(b-a))
-      (a+b)/2=$(0.5*(a+b)), f((a+b)/2)=$(mround(f(0.5*(a+b)))), """
-      
-      #store["ax_title"][]="a=$(mround(a)), b=$(mround(b)), f((a+b)/2)=$(mround(f(0.5*(a+b)))), \n|b-a|=$(mround(b-a))"
+      hide(store)
+      store["pos"]+=1
+      method(store)
+      plt(store)
     end
 
     function left(store)
-      pos=store["pos"]
-      npos=store["npos"]
-      (pos<=1) && return
-  
-      ax=store["ax"]
-      for p in store["aktplt"]
-        delete!(ax,p)
-      end
-      
-      pos-=1
-      (a,b,z)=store["abseq"][pos]
-      f=store["f"]
-      
-      store["aktplt"],_=mkplt(ax,a,b,f,store["xyseq"][pos]...)
-      store["pos"]=pos
-      #store["ax_title"][]="a=$(mround(a)), b=$(mround(b)), f((a+b)/2)=$(mround(f(0.5*(a+b)))), |b-a|=$(mround(b-a))"
-      store["ax_title"][]="""a=$(mround(a)), b=$(mround(b)), |b-a|=$(mround(b-a))
-      (a+b)/2=$(0.5*(a+b)), f((a+b)/2)=$(mround(f(0.5*(a+b)))), """
+      (store["pos"]<=1) && return
+      hide(store)
+      store["pos"]-=1
+      plt(store)
     end
 
     # basic definitions
@@ -342,11 +343,18 @@ module Zero
 
       store=Dict(
         "ax"=>ax, 
-        "ax_title"=>ax_title,
-        "aktplt"=>[],
-        "xyseq"=>Dict(0=>[]),
+        "ax_title"=>"init",
+        "next_ab"=>Dict(0=>()),
+        "plt"=>Dict(0=>()),
         "npos"=>0,
         "pos"=>0,
+        "extra"=>false,
+        "zoom"=>false,
+        "A"=>NaN,
+        "B"=>NaN,
+        "zlimits"=>Dict{Int,Any}(
+          0=>(nothing,nothing),
+        )
       )
     end
     
@@ -378,27 +386,28 @@ module Zero
 
       btnzoom=Button(
         fzoom, 
-        label="+",
+        label="zoom",
         font="TeX Mono",
         fontsize=16,
         tellwidth=true,
       )
 
       on(btnzoom.clicks) do _
+        return
         zoom(store)
       end
 
       # some decoration
-      btndec=Button(
+      btnextra=Button(
         fdec, 
-        label="?",
+        label="extra",
         font="TeX Mono",
         fontsize=16,
         tellwidth=true,
       )
 
-      on(btndec.clicks) do _
-        dec(store)
+      on(btnextra.clicks) do _
+        extra(store)
       end
     end
 
@@ -419,16 +428,27 @@ module Zero
       on(menu.selection,update=true) do funname
         data=mkdata_bracket(funname)
         flab2_text[]=data.desc
-        for p in store["aktplt"]
-          delete!(ax,p)
-        end
-        store["aktplt"]=[]
-        store["xyseq"]=Dict(0=>[])
+        empty!(ax)
+        xline=hlines!(
+          ax,
+          [0],
+          color=(:black,0.5),
+          linewidth=1,
+        ); xline.visible=true
+
         store["npos"]=0
         store["pos"]=0
         store["f"]=data.f;
-        store["abseq"]=Dict(0=>(data.a,data.b,false))
-        zoom(store)
+        store["next_ab"]=Dict(
+          0=>(data.A,data.B),
+        )
+        store["plt"]=Dict{Int,Any}(
+          0=>(),
+        )
+        store["A"]=data.A
+        store["B"]=data.B
+        
+        right(store)
       end
     end
 
