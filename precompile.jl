@@ -1,4 +1,5 @@
 # this script was used to create the sysimage
+# 
 #using PackageCompiler
 #create_sysimage(:GLMakie; sysimage_path="sysimage.so",precompile_execution_file="precompile.jl")
 

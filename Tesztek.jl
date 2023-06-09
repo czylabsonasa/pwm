@@ -1,7 +1,3 @@
-# got a more involved "method", but the overall complexity is smaller (especially 
-# when every block is folded
-# 
-
 module Tesztek
   #GLMakie.activate!()
 
@@ -15,10 +11,10 @@ module Tesztek
   end
   
   function move(b::Ball)
-    d=2.0
+    d=2.0 # depends on markersize...
     b.x+=b.vx
     b.y+=b.vy
-    if b.x< -50+d || b.x>50-d
+    if b.x< -50+d || b.x>50-d # -50,50: limits of axis
       b.vx=-b.vx
     elseif b.y< -50+d || b.y>50-d
       b.vy=-b.vy
@@ -39,10 +35,7 @@ module Tesztek
  
   function teszt1()
     
- 
- 
-    
-    # basic definitions
+    # definitions
     begin
       fig=Figure(
         fonts = (; regular= "TeX Mono"),
@@ -84,40 +77,84 @@ module Tesztek
         opause[]=!opause[]
         #println(opause[])
       end
-
-
     end
-    display(fig)
-    
-    bb=[
-      Ball(40*rand()-20,40*rand()-20,rand([-3,-2,-1,1,2,3])/3,rand([-3,-2,-1,1,2,3])/3) for k in 1:33
-    ]
 
-    plt=nothing
-    while true
-      move.(bb)
-      coll(bb)
-      if plt!==nothing
-        delete!(ax,plt)
+    display(fig)
+
+    # actions
+    begin
+      bb=[
+        Ball(40*rand()-20,40*rand()-20,rand([-3,-2,-1,1,2,3])/3,rand([-3,-2,-1,1,2,3])/3) for k in 1:33
+      ]
+
+      plt=nothing
+      while true
+        move.(bb)
+        coll(bb)
+        if plt!==nothing
+          delete!(ax,plt)
+        end
+        plt=scatter!(
+          ax, [b.x for b in bb], [b.y for b in bb], 
+          markersize=20,
+          visible=true,
+          color=:black
+        )        
+        if ostop[]==true
+          break
+        end
+        while opause[]==true
+          sleep(0.1)
+        end
+        sleep(0.01)
       end
-      plt=scatter!(
-        ax, [b.x for b in bb], [b.y for b in bb], 
-        markersize=20,
-        visible=true,
-        color=:black
-      )        
-      if ostop[]==true
-        break
-      end
-      while opause[]==true
-        sleep(0.1)
-      end
-      sleep(0.01)
+
     end
 
   end # of teszt1
   
   export teszt1
+
+
+  function teszt2()
+    fig=Figure(
+      fonts = (; regular= "TeX Mono"),
+    )
+    ax=Axis(
+      fig[1,1],
+      xgridvisible=false,
+      ygridvisible=false,
+      title="none",
+      aspect=1,
+    )
+
+    alfa=0.15
+    fc=:green
+    lc=:blue
+
+    x=range(-5,5,100)
+
+    y1=3*x.+1
+    lines!(ax,x,y1,color=lc)
+    y2=2*x.+3
+    lines!(ax,x,y2,color=lc)
+    fill_between!(ax,x,y1,y2,color=(fc,alfa))
+
+
+    vlines!(ax,[0],color=lc)
+    fill_between!(ax,[0,100],-100,100,color=(fc,alfa))
+
+    hlines!(ax,[0],color=lc)
+    fill_between!(ax,[-1,100],0,100,color=(fc,alfa))
+    limits!(ax,-1,5,-5,5)
+
+
+    limits!(ax,-1,5,-1,5)
+    
+    
+    current_figure()
+  end
+  export teszt2
 
 
 
